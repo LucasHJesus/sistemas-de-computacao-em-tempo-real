@@ -7,10 +7,9 @@ using System;
 namespace mockUp
 {
     public partial class Form1 : Form
-    { 
+    {
         Thread threadEnvioPacotesModulo2 = null;
         UdpClient usocketConexaoUDPModulo2 = null;
-        //IPEndPoint ipConexaoRecebimentoUDPModulo2 = null;
         IPEndPoint ipConexaoEnvioUDPModulo2 = null;
 
         int modoDeGeracao;
@@ -21,7 +20,6 @@ namespace mockUp
         public Form1()
         {
             InitializeComponent();
-            Console.WriteLine("suiii");
         }
 
         private void rbNormal_CheckedChanged(object sender, EventArgs e)
@@ -46,7 +44,7 @@ namespace mockUp
             ipConexaoEnvioUDPModulo2 = new IPEndPoint(IPAddress.Parse("255.255.255.255"), 1235);
 
             switch (modoDeGeracao)
-            { 
+            {
                 case 2:
                     threadEnvioPacotesModulo2 = new Thread(EnvioPacotesFalta);
                     break;
@@ -58,7 +56,7 @@ namespace mockUp
                     break;
             }
             threadEnvioPacotesModulo2.Start();
-            
+
         }
 
         private void EnvioPacoteNormal()
@@ -70,6 +68,7 @@ namespace mockUp
 
             for (int i = 0; i < nudTotalDePacotes.Value; i++)
             {
+                
                 if (i < nudPacoteslFurto.Value) //os primeiros pacotes, vou mandar eles pertecendo a uma mesma regiao geografica inserindo pouca variacao nas coordenadas geograficas
                     valorASomar = (double)(rnd.Next(-10, 10) / 5000.0); //pequena variacao de posicao
                 else
@@ -84,24 +83,25 @@ namespace mockUp
                 formatoPacoteModulo2 = "{\"Lat\":" + latitude.ToString(CultureInfo.InvariantCulture) +
                                        ",\"Long\":" + longitude.ToString(CultureInfo.CreateSpecificCulture("en-GB")) +
                                        ",\"codErro\":95}";
-                //"N", CultureInfo.CreateSpecificCulture("en-US")
 
                 bytesAEnviarModulo2 = Encoding.ASCII.GetBytes(formatoPacoteModulo2);
                 if (usocketConexaoUDPModulo2 != null)
                 {
-                    usocketConexaoUDPModulo2.Send(bytesAEnviarModulo2, bytesAEnviarModulo2.Length, ipConexaoEnvioUDPModulo2);
-                    Console.WriteLine(i);
+                    try 
+                    {
+                        usocketConexaoUDPModulo2.Send(bytesAEnviarModulo2, bytesAEnviarModulo2.Length, ipConexaoEnvioUDPModulo2);
+                    } catch (Exception ex) { }
                 }
             }
         }
 
         private void EnvioPacotesFalta()
         {
-            
-            
-           
+
+
+
         }
-    
+
         private void EnvioPacoteFurto()
         {
 
@@ -112,13 +112,19 @@ namespace mockUp
 
             //Timer(1m);
 
-            while(true)
+            while (true)
             {
                 formatoPacoteModulo2 = "{\"Lat\":" + latitude.ToString(CultureInfo.InvariantCulture) +
                                       ",\"Long\":" + longitude.ToString(CultureInfo.CreateSpecificCulture("en-GB")) +
                                       "}";
                 //envia(formatoPacoteModulo2);
             }
+        }
+
+        private void btnParar_Click(object sender, EventArgs e)
+        {
+            if (usocketConexaoUDPModulo2 != null)
+                usocketConexaoUDPModulo2.Close();  
         }
     }
 }
