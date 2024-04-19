@@ -39,6 +39,7 @@
             lblPacoteslFurto = new Label();
             nudPacoteslFurto = new NumericUpDown();
             btnGerar = new Button();
+            btnParar = new Button();
             ((System.ComponentModel.ISupportInitialize)nudTotalDePacotes).BeginInit();
             gbModoDeGeracao.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)nudPacotesFalta).BeginInit();
@@ -152,17 +153,28 @@
             // 
             btnGerar.Location = new Point(28, 460);
             btnGerar.Name = "btnGerar";
-            btnGerar.Size = new Size(175, 29);
+            btnGerar.Size = new Size(87, 29);
             btnGerar.TabIndex = 8;
             btnGerar.Text = "Gerar Pacotes";
             btnGerar.UseVisualStyleBackColor = true;
             btnGerar.Click += btnGerar_Click;
+            // 
+            // btnParar
+            // 
+            btnParar.Location = new Point(116, 460);
+            btnParar.Name = "btnParar";
+            btnParar.Size = new Size(87, 29);
+            btnParar.TabIndex = 9;
+            btnParar.Text = "Parar";
+            btnParar.UseVisualStyleBackColor = true;
+            btnParar.Click += btnParar_Click;
             // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(251, 513);
+            Controls.Add(btnParar);
             Controls.Add(btnGerar);
             Controls.Add(nudPacoteslFurto);
             Controls.Add(lblPacoteslFurto);
@@ -195,5 +207,6 @@
         private Label lblPacoteslFurto;
         private NumericUpDown nudPacoteslFurto;
         private Button btnGerar;
+        private Button btnParar;
     }
 }
