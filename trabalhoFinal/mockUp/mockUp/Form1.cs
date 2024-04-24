@@ -179,7 +179,6 @@ namespace mockUp
 
         private void EnvioPacotesFalta()
         {
-            watch.Start();
             Random rnd = new Random();
             double valorASomar = 0;
             double latMid = rnd.NextDouble() * (maxLat - minLat) + minLat;
