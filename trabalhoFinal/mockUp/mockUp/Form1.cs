@@ -64,7 +64,9 @@ namespace mockUp
         {
             watch = new Stopwatch();
             usocketConexaoUDPModulo2 = new UdpClient(1234);
-            ipConexaoEnvioUDPModulo2 = new IPEndPoint(IPAddress.Broadcast, 1235);
+            //IPAddress.Broadcast
+            //IPAddress.Parse("255.255.255.255")
+            ipConexaoEnvioUDPModulo2 = new IPEndPoint(IPAddress.Parse("255.255.255.255"), 1235);
 
             switch (modoDeGeracao)
             {
@@ -134,10 +136,10 @@ namespace mockUp
                  */
                
                formatoPacoteModulo2 = "{\"URI\":\"99/1\"," +
-                                        "\"idMU\":" + i.ToString(CultureInfo.InvariantCulture) +
+                                        "\"idMU\":" + i.ToString() +
                                         ",\"latitude\":" + latitude.ToString(CultureInfo.InvariantCulture) + ",\"longitude\":" + longitude.ToString(CultureInfo.InvariantCulture) +
                                         ",\"idAtivo\":\"\"" +
-                                        ",\"numPct\":" + i.ToString(CultureInfo.InvariantCulture) +
+                                        ",\"numPct\":" + i.ToString() +
                                         ",\"timeStamping\":\"\""+
                                         ",\"freqEnvioMS\":" + "1000" +
                                         ",\"medidas\":" + "[{\"fase\":\"A\"" +
@@ -172,7 +174,7 @@ namespace mockUp
             TimeSpan tempo = watch.Elapsed;
 
             
-            MessageBox.Show("time elapsed: " + tempo.TotalMilliseconds + " ms");
+            //MessageBox.Show("time elapsed: " + tempo.TotalMilliseconds + " ms");
         }
 
         private void EnvioPacotesFalta()
@@ -189,7 +191,7 @@ namespace mockUp
                 if (flagStop)
                     break;
 
-                if (i < nudPacoteslFurto.Value) //os primeiros pacotes, vou mandar eles pertecendo a uma mesma regiao geografica inserindo pouca variacao nas coordenadas geograficas
+                if (i < nudPacotesFalta.Value) //os primeiros pacotes, vou mandar eles pertecendo a uma mesma regiao geografica inserindo pouca variacao nas coordenadas geograficas
                 {
                     valorASomar = (double)(rnd.Next(-10, 10) / 5000.0); //pequena variacao de posicao
                     latitude = latMid + valorASomar;
@@ -213,15 +215,15 @@ namespace mockUp
                                         ",\"freqEnvioMS\":" + "1000" +
                                         ",\"medidas\":" + "[{\"fase\":\"A\"" +
                                                            ",\"tensao\":" + "220.0" +
-                                                           ",\"corrente\":" + (corrente).ToString() +
+                                                           ",\"corrente\":" + (corrente).ToString(CultureInfo.InvariantCulture) +
                                                            ",\"angTensao\": \"\",\"potAtivaVA\":0.0,\"potReativaVAr\":0.0,\"potRealW\":0.0,\"fatorP\":0.0,\"freq\":60}," +
                                                            "{\"fase\":\"B\"" +
                                                            ",\"tensao\":" + "220.0" +
-                                                           ",\"corrente\":" + (corrente).ToString() +
+                                                           ",\"corrente\":" + (corrente).ToString(CultureInfo.InvariantCulture) +
                                                            ",\"angTensao\": 0.0,\"potAtivaVA\":0.0,\"potReativaVAr\":0.0,\"potRealW\":0.0,\"fatorP\":0.0,\"freq\":60}," +
                                                            "{\"fase\":\"C\"" +
                                                            ",\"tensao\":" + "220.0" +
-                                                           ",\"corrente\":" + (corrente).ToString() +
+                                                           ",\"corrente\":" + (corrente).ToString(CultureInfo.InvariantCulture) +
                                                            ",\"angTensao\": 0.0,\"potAtivaVA\":0.0,\"potReativaVAr\":0.0,\"potRealW\":0.0,\"fatorP\":0.0,\"freq\":60}]}";
 
                 
@@ -244,7 +246,7 @@ namespace mockUp
 
             TimeSpan tempo = watch.Elapsed;
 
-            MessageBox.Show("time elapsed: " + tempo.TotalMilliseconds + " ms");
+            //MessageBox.Show("time elapsed: " + tempo.TotalMilliseconds + " ms");
         }
 
         private void EnvioPacoteFurto()
