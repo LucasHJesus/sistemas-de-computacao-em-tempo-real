@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
@@ -35,9 +36,10 @@ namespace faltaDeEnergia
     }
     internal class Program
     {
-        static int numThread = 5;
+        static int numThread = 4;
         static int portReceptor = 1235;
         static int portSender = 6942;
+        static int portTarget = 5515;
 
         static IPEndPoint targetEndpoint = null;
         static UdpClient UdpClientReceptor = null;
@@ -49,14 +51,22 @@ namespace faltaDeEnergia
         static Thread recievePackets = null;
         static Thread sendPackets = null;
         static Thread distributingPackets = null;
+        static Thread processData = null;
+        static Thread[] partialCluster = null;
 
         static ConcurrentQueue<string> bufferReciever = null;
-        static ConcurrentQueue<MedidasLeitura>[] buffersProcessing = null;
+        static ConcurrentQueue<MedidasLeitura> bufferParsed = null;
+        static ConcurrentQueue<Double[][]> centroidBuffer = null;
+        static ConcurrentQueue<MedidasLeitura>[] bufferProcessing = null;
+        static ConcurrentQueue<int> indexThreadQueue = null;
+        static ConcurrentQueue<string> bufferSender = null;
 
+
+ 
         
         private static void recieveData()
         {
-            
+            Console.WriteLine("Recieving Started");
             while (true)
             {
                 byte[] receivedBytes = UdpClientReceptor.Receive(ref IPReceptor);
@@ -66,23 +76,25 @@ namespace faltaDeEnergia
             }
         }
 
-        private static void distributingData()
+        private static void parsingData()
         {
-            int i = 0;
+            
             string packet;
-            Console.WriteLine("entrou 1");
+            Console.WriteLine("Parsing Started");
             while(true)
             {
                 if(bufferReciever.TryDequeue(out packet))
                 {
                     try
                     {
-                        //Console.WriteLine(packet);
                         MedidasLeitura? medidas = JsonSerializer.Deserialize<MedidasLeitura>(packet);
+
+                        
                         if(medidas != null && medidas.medidas[0].corrente<1.0 && medidas.medidas[1].corrente < 1.0 && medidas.medidas[2].corrente < 1.0) 
                         {
-                            buffersProcessing[i % numThread].Enqueue(medidas);
-                            i++;
+
+                            bufferParsed.Enqueue(medidas);
+                            
                         }
                         
 
@@ -99,41 +111,157 @@ namespace faltaDeEnergia
             
         }
 
-        static void sendData()
+        private static void processingData()
         {
-            string stringToSend = "AE CARAAAAAAAI";
-            string message = "Hello from C#!";
-            byte[] data = Encoding.ASCII.GetBytes(message);
+            Console.WriteLine("Processing Started");
+            partialCluster = new Thread[numThread];
+            double[][] centroids; double longitudeCentroide; double latitudeCentroide;
+            int p; int numberOfClusters = 1; int indexBufferProcessing = 0; bool dequeued;
+            MedidasLeitura[][] arrayMedidas = new MedidasLeitura[numThread][]; MedidasLeitura medidas;
+
+            Stopwatch sw = new Stopwatch();
+            TimeSpan time;
+            
+
+            centroidBuffer = new ConcurrentQueue<double[][]>();
+
             while (true)
             {
-                if (UdpClientReceptor != null)
+                longitudeCentroide = 0.0;
+                latitudeCentroide = 0.0;
+                dequeued = false;
+                p = 0;
+
+                while (p < 2)
                 {
+                    if (bufferParsed.TryDequeue(out medidas))
+                    {
+                        dequeued = true;
+                        p = 0;
+                        bufferProcessing[indexBufferProcessing%numThread].Enqueue(medidas);
+                        indexBufferProcessing++;
+                        
+                    }
+                    else
+                    {
+                        p++;
+                        Thread.Sleep(100);
+                    }
+                }
+
+                if (!dequeued) continue;
+
+                sw.Start();
+                for(int i = 0; i < numThread; i++)
+                {
+                    indexThreadQueue.Enqueue(i);
+                }
+
+                for (int indexThread = 0; indexThread < numThread; indexThread++)
+                {
+                    partialCluster[indexThread] = new Thread(() => partialClustering(numberOfClusters));
+                    partialCluster[indexThread].Start();
+                }
+
+                for (int m = 0; m < numThread; m++) partialCluster[m].Join(); 
+
+                while(centroidBuffer.TryDequeue(out centroids))
+                {
+                    latitudeCentroide += centroids[0][0];
+                    longitudeCentroide += centroids[0][1];
+                }
+
+                sw.Stop();
+                time = sw.Elapsed;
+                Console.WriteLine("time with " + numThread + " threads: " + time.Microseconds);
+
+                latitudeCentroide /= (Double)numThread;
+                longitudeCentroide /= (Double)numThread;
+
+                string mensagem = "{\"latitude\":" + latitudeCentroide.ToString(CultureInfo.InvariantCulture) + ",\"longitude\":"+longitudeCentroide.ToString(CultureInfo.InvariantCulture) +"}" ;
+                bufferSender.Enqueue(mensagem) ;
+
+            }
+           
+            
+        }
+
+        private static void partialClustering(int numberCLusters) 
+        {
+            indexThreadQueue.TryDequeue(out int indexThread);
+            Console.WriteLine("IndexThread: " + indexThread);
+            double[][] data = new double[bufferProcessing[indexThread].Count][];
+
+            MedidasLeitura parcialData; int indexData = 0;
+
+            while (bufferProcessing[indexThread].TryDequeue(out parcialData))
+            {
+                data[indexData] = new double[] { parcialData.latitude, parcialData.longitude };
+                indexData++;
+            }
+
+            if (data == null) return;
+            KMeans km = new KMeans(numberCLusters, data, "plusplus", 100, 0);
+            km.Cluster(10);
+
+             centroidBuffer.Enqueue(km.means);
+
+            Console.WriteLine("Thread " + indexThread + " finish computing");
+        }
+
+        static void sendData()
+        {
+            Console.WriteLine("Send data started");
+           
+            while (true)
+            {
+                while(bufferSender.TryDequeue(out string message))
+                {
+                    if (UdpClientReceptor == null) continue;
+                    byte[] data = Encoding.ASCII.GetBytes(message);
+
                     try
                     {
                         UdpClientReceptor.Send(data, data.Length, targetEndpoint);
+                        Console.WriteLine("message Sent: "+ message);
                     }
                     catch (Exception ex) { }
                 }
+                
+                
             }
         }
 
         static void Main(string[] args)
-        {
+        { 
+
             bufferReciever = new ConcurrentQueue<string>();
-            buffersProcessing = new ConcurrentQueue<MedidasLeitura>[numThread];
-            
+            bufferSender = new ConcurrentQueue<string>();
+            indexThreadQueue = new ConcurrentQueue<int>();
+            bufferParsed = new ConcurrentQueue<MedidasLeitura>();
+            bufferProcessing = new ConcurrentQueue<MedidasLeitura>[numThread];
+            for(int i =0;i < numThread; i++)
+            {
+                bufferProcessing[i] = new ConcurrentQueue<MedidasLeitura>();
+            }
+
+
             UdpClientReceptor = new UdpClient(portReceptor);
             IPReceptor = null;
             
             UdpClientSender = new UdpClient(portSender);
-            targetEndpoint = new IPEndPoint(IPAddress.Broadcast, portSender);
+            targetEndpoint = new IPEndPoint(IPAddress.Broadcast, portTarget);
 
-            Console.WriteLine("waiting for data...");
+            
             recievePackets = new Thread(recieveData);
             recievePackets.Start();
 
-            distributingPackets = new Thread(distributingData);
+            distributingPackets = new Thread(parsingData);
             distributingPackets.Start();
+
+            processData = new Thread(processingData);
+            processData.Start();
+
 
             sendPackets = new Thread(sendData);
             sendPackets.Start();
