@@ -39,8 +39,9 @@ namespace faltaDeEnergia
         static int numThread = 4;
         static int portReceptor = 1235;
         static int portSender = 6942;
-        static int portTarget = 5515;
+        static int portTarget = 3333;
         static int maxMUNumber = 300000;
+        static double limite = 0.0;
 
         static IPEndPoint targetEndpoint = null;
         static UdpClient UdpClientReceptor = null;
@@ -68,7 +69,8 @@ namespace faltaDeEnergia
         {
             Random rnd = new Random();
             int idPKT = rnd.Next();
-            string mensagem = "{\"URI\":\"100/11\" ,\"idPKT\":" + idPKT.ToString() + ",\"Latitude\": " + latitude.ToString(CultureInfo.InvariantCulture) + ",\"Longitude\": " + longitude.ToString(CultureInfo.InvariantCulture);
+            string mensagem = "{\"URI\":\"100/11\" ,\"idPKT\":" + idPKT.ToString() + ",\"cords\":[{" +
+                "\"Lat\": " + latitude.ToString(CultureInfo.InvariantCulture) + ",\"Long\": " + longitude.ToString(CultureInfo.InvariantCulture) + "}]";
 
             string idMUs = "";
 
@@ -76,6 +78,8 @@ namespace faltaDeEnergia
             {
                 idMUs += medida.idMU.ToString() + ",";
             }
+
+
 
             idMUs = idMUs.Remove(idMUs.Length - 1, 1);
 
@@ -110,7 +114,7 @@ namespace faltaDeEnergia
                         MedidasLeitura? medidas = JsonSerializer.Deserialize<MedidasLeitura>(packet);
 
                         
-                        if(medidas != null && medidas.medidas[0].corrente<1.0 && medidas.medidas[1].corrente < 1.0 && medidas.medidas[2].corrente < 1.0) 
+                        if(medidas != null && medidas.medidas[0].corrente == limite && medidas.medidas[1].corrente == limite && medidas.medidas[2].corrente == limite) 
                         {
 
                             bufferParsed.Enqueue(medidas);
@@ -138,7 +142,7 @@ namespace faltaDeEnergia
             double[][] centroids; double longitudeCentroide; double latitudeCentroide;
             int p; int numberOfClusters = 1; int indexBufferProcessing;
             bool dequeued;
-            ; MedidasLeitura medidas;
+            MedidasLeitura medidas;
 
             
 
@@ -172,7 +176,7 @@ namespace faltaDeEnergia
                     }
                 }
 
-                if (!dequeued) continue;
+                if (!dequeued || arrayMedidas.Length<5) continue;
                 
                 Array.Resize(ref arrayMedidas, indexBufferProcessing);
 
@@ -202,7 +206,6 @@ namespace faltaDeEnergia
 
                 string mensagem = packetFormater(arrayMedidas,latitudeCentroide,longitudeCentroide);
 
-                //string mensagem = "{\"latitude\":" + latitudeCentroide.ToString(CultureInfo.InvariantCulture) + ",\"longitude\":"+longitudeCentroide.ToString(CultureInfo.InvariantCulture) +"}" ;
                 bufferSender.Enqueue(mensagem) ;
 
             }
@@ -274,9 +277,9 @@ namespace faltaDeEnergia
             IPReceptor = null;
             
             UdpClientSender = new UdpClient(portSender);
-            targetEndpoint = new IPEndPoint(IPAddress.Broadcast, portTarget);
+            targetEndpoint = new IPEndPoint(IPAddress.Broadcast, portTarget); //Parse("10.15.31.130")
 
-            
+
             recievePackets = new Thread(recieveData);
             recievePackets.Start();
 
